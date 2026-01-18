@@ -84,14 +84,19 @@ class TestFetchVibeTasks:
             "success": True,
             "data": [
                 {"id": "1", "title": "Task 1", "project_id": "proj-1"},
-                {"id": "2", "title": "Task 2", "project_id": "proj-2"},
                 {"id": "3", "title": "Task 3", "project_id": "proj-1"},
             ],
         }
 
-        with patch("requests.get", return_value=mock_response):
+        with patch("requests.get", return_value=mock_response) as mock_get:
             result = main.fetch_vibe_tasks("http://localhost:3000", "proj-1")
 
+            # Should pass project_id as query param
+            mock_get.assert_called_once_with(
+                "http://localhost:3000/api/tasks",
+                params={"project_id": "proj-1"},
+                timeout=30
+            )
             assert len(result) == 2
             assert all(t["project_id"] == "proj-1" for t in result)
 
@@ -140,7 +145,7 @@ class TestCreateVibeTask:
 
         with patch("requests.post", return_value=mock_response) as mock_post:
             result = main.create_vibe_task(
-                "http://localhost:3000", "proj-1", "Test Task", "Task content"
+                "http://localhost:3000", "proj-1", "Test Task", "Task description"
             )
 
             assert result is True
@@ -149,7 +154,7 @@ class TestCreateVibeTask:
             assert call_kwargs["json"] == {
                 "title": "Test Task",
                 "project_id": "proj-1",
-                "content": "Task content",
+                "description": "Task description",
             }
 
     def test_create_vibe_task_failure(self):
