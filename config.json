@@ -1,0 +1,10 @@
+{
+    "vibe_api_url": "http://localhost:3000",
+    "sync_interval_seconds": 60,
+    "projects": [
+        {
+            "github_repo": "brandonkchow/laminardata",
+            "vibe_project_id": "2925de7c-81b0-4e98-a3a7-c045db629b86"
+        }
+    ]
+}
