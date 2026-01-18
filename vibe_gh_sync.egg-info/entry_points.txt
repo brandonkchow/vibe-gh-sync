@@ -1,0 +1,2 @@
+[console_scripts]
+vibe-sync = vibe_gh_sync:main

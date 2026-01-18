@@ -1,6 +1,7 @@
 {
-    "vibe_api_url": "http://localhost:3000",
+    "vibe_api_url": "http://127.0.0.1:52948",
     "sync_interval_seconds": 60,
+    "issue_limit": 100,
     "projects": [
         {
             "github_repo": "brandonkchow/laminardata",

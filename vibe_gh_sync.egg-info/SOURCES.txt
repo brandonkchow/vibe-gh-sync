@@ -1,0 +1,10 @@
+README.md
+pyproject.toml
+setup.py
+vibe_gh_sync.py
+vibe_gh_sync.egg-info/PKG-INFO
+vibe_gh_sync.egg-info/SOURCES.txt
+vibe_gh_sync.egg-info/dependency_links.txt
+vibe_gh_sync.egg-info/entry_points.txt
+vibe_gh_sync.egg-info/requires.txt
+vibe_gh_sync.egg-info/top_level.txt
