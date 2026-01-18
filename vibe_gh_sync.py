@@ -583,8 +583,33 @@ def run_sync(config, once=False):
                 time.sleep(1)
 
 
+def delete_task_via_mcp(task_id):
+    """Delete a single task using MCP CLI."""
+    import subprocess
+    try:
+        result = subprocess.run(
+            ["mcp-cli", "call", "vibe_kanban/delete_task", f'{{"task_id": "{task_id}"}}'],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        if result.returncode == 0:
+            return True
+        else:
+            logger.error(f"MCP delete failed for {task_id}: {result.stderr}")
+            return False
+    except subprocess.SubprocessError as e:
+        logger.error(f"Error calling MCP to delete task {task_id}: {e}")
+        return False
+
+
 def delete_task(api_url, task_id):
-    """Delete a single task."""
+    """Delete a single task (tries MCP first, then falls back to HTTP)."""
+    # Try MCP first (more reliable)
+    if delete_task_via_mcp(task_id):
+        return True
+
+    # Fallback to HTTP DELETE (may not be supported)
     try:
         resp = requests.delete(f"{api_url}/api/tasks/{task_id}", timeout=30)
         return resp.status_code in [200, 204]
@@ -593,7 +618,7 @@ def delete_task(api_url, task_id):
         return False
 
 
-def clear_tasks_interactive(config, task_filter=None):
+def clear_tasks_interactive(config, task_filter=None, auto_confirm=False):
     """Clear tasks from Vibe Kanban project."""
     vibe_url = get_vibe_api_url(config)
     projects = config.get("projects", [])
@@ -611,15 +636,20 @@ def clear_tasks_interactive(config, task_filter=None):
     if len(projects) == 1:
         selected_idx = 0
     else:
-        selection = input("\nSelect project to clear (number): ").strip()
-        try:
-            selected_idx = int(selection) - 1
-            if not 0 <= selected_idx < len(projects):
-                print("Invalid selection.")
+        if auto_confirm:
+            # If auto-confirm, default to first project
+            selected_idx = 0
+            print(f"\nAuto-selecting project 1: {projects[0]['github_repo']}")
+        else:
+            selection = input("\nSelect project to clear (number): ").strip()
+            try:
+                selected_idx = int(selection) - 1
+                if not 0 <= selected_idx < len(projects):
+                    print("Invalid selection.")
+                    return 1
+            except ValueError:
+                print("Invalid input.")
                 return 1
-        except ValueError:
-            print("Invalid input.")
-            return 1
 
     project = projects[selected_idx]
     project_id = project["vibe_project_id"]
@@ -639,7 +669,7 @@ def clear_tasks_interactive(config, task_filter=None):
             t
             for t in tasks
             if task_filter.lower() in (t.get("title", "").lower())
-            or task_filter.lower() in (t.get("content", "") or "").lower()
+            or task_filter.lower() in (t.get("description", "") or "").lower()
         ]
         print(f"Found {len(tasks)} tasks matching filter '{task_filter}'")
     else:
@@ -656,10 +686,13 @@ def clear_tasks_interactive(config, task_filter=None):
         print(f"  - {title} ({task_id})")
 
     # Confirm
-    response = input(f"\nDelete {len(tasks)} task(s)? [y/N]: ").strip()
-    if response.lower() != "y":
-        print("Cancelled.")
-        return 0
+    if auto_confirm:
+        print(f"\nAuto-confirming deletion of {len(tasks)} task(s) (--yes flag)")
+    else:
+        response = input(f"\nDelete {len(tasks)} task(s)? [y/N]: ").strip()
+        if response.lower() != "y":
+            print("Cancelled.")
+            return 0
 
     # Delete
     deleted = 0
@@ -686,7 +719,7 @@ Examples:
   vibe-sync --once                 Run a single sync and exit
   vibe-sync --all                  Sync all configured repos (no prompt)
   vibe-sync --dry-run              Show what would be synced without creating tasks
-  vibe-sync --clear-tasks          Clear tasks from Vibe Kanban project
+  vibe-sync --clear-tasks --yes    Clear tasks from Vibe Kanban project (no confirmation)
   vibe-sync -c /path/to/config.json  Use custom config file
 """,
     )
@@ -725,6 +758,12 @@ Examples:
         "--clear-tasks",
         action="store_true",
         help="Clear tasks from Vibe Kanban project",
+    )
+    parser.add_argument(
+        "--yes",
+        "-y",
+        action="store_true",
+        help="Skip confirmation prompts (auto-confirm deletions)",
     )
     parser.add_argument(
         "--filter",
@@ -778,7 +817,7 @@ Examples:
 
     # Handle --clear-tasks
     if args.clear_tasks:
-        return clear_tasks_interactive(config, task_filter=args.filter)
+        return clear_tasks_interactive(config, task_filter=args.filter, auto_confirm=args.yes)
 
     # Select projects interactively unless --all is specified
     if not args.all and len(config.get("projects", [])) > 1:
