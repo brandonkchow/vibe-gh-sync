@@ -438,9 +438,9 @@ def fetch_vibe_tasks(api_url, project_id):
         return []
 
 
-def create_vibe_task(api_url, project_id, title, content):
+def create_vibe_task(api_url, project_id, title, description):
     """Create a new task in Vibe Kanban."""
-    payload = {"title": title, "project_id": project_id, "content": content}
+    payload = {"title": title, "project_id": project_id, "description": description}
     try:
         resp = requests.post(f"{api_url}/api/tasks", json=payload, timeout=30)
         if resp.status_code in [200, 201]:
@@ -519,28 +519,28 @@ def run_sync(config, once=False):
             existing_urls = set()
             existing_titles = set()  # Also track titles as backup
             for task in vibe_tasks:
-                content = task.get("content") or ""
+                description = task.get("description") or ""
                 title = task.get("title", "")
 
                 # Track title for backup duplicate detection
                 if title:
                     existing_titles.add(title.strip())
 
-                # Extract URL if present in content - handle multiple formats
+                # Extract URL if present in description - handle multiple formats
                 # Format 1: "Original Issue: <url>"
-                if "Original Issue: " in content:
-                    url_start = content.find("Original Issue: ") + len(
+                if "Original Issue: " in description:
+                    url_start = description.find("Original Issue: ") + len(
                         "Original Issue: "
                     )
-                    url_end = content.find("\n", url_start)
+                    url_end = description.find("\n", url_start)
                     if url_end == -1:
-                        url_end = len(content)
-                    url = content[url_start:url_end].strip()
+                        url_end = len(description)
+                    url = description[url_start:url_end].strip()
                     if url:
                         existing_urls.add(url)
 
-                # Format 2: Also check for any github.com URLs in content
-                github_urls = re.findall(r'https://github\.com/[^\s\)]+', content)
+                # Format 2: Also check for any github.com URLs in description
+                github_urls = re.findall(r'https://github\.com/[^\s\)]+', description)
                 for url in github_urls:
                     existing_urls.add(url.strip())
 
@@ -550,7 +550,7 @@ def run_sync(config, once=False):
                 issue_url = issue["url"]
                 issue_body = issue["body"] or ""
 
-                task_content = f"{issue_body}\n\nOriginal Issue: {issue_url}"
+                task_description = f"{issue_body}\n\nOriginal Issue: {issue_url}"
 
                 # Check for duplicates using both URL (primary) and title (fallback)
                 is_duplicate = (
@@ -564,7 +564,7 @@ def run_sync(config, once=False):
                     logger.info(
                         f"Creating task for issue #{issue['number']}: {issue_title}"
                     )
-                    success = create_vibe_task(vibe_url, vibe_proj_id, issue_title, task_content)
+                    success = create_vibe_task(vibe_url, vibe_proj_id, issue_title, task_description)
                     # Track newly created tasks to avoid duplicates within same sync
                     if success:
                         existing_urls.add(issue_url)
@@ -814,23 +814,23 @@ def dry_run(config):
         existing_urls = set()
         existing_titles = set()
         for task in vibe_tasks:
-            content = task.get("content") or ""
+            description = task.get("description") or ""
             title = task.get("title", "")
 
             if title:
                 existing_titles.add(title.strip())
 
-            if "Original Issue: " in content:
-                url_start = content.find("Original Issue: ") + len("Original Issue: ")
-                url_end = content.find("\n", url_start)
+            if "Original Issue: " in description:
+                url_start = description.find("Original Issue: ") + len("Original Issue: ")
+                url_end = description.find("\n", url_start)
                 if url_end == -1:
-                    url_end = len(content)
-                url = content[url_start:url_end].strip()
+                    url_end = len(description)
+                url = description[url_start:url_end].strip()
                 if url:
                     existing_urls.add(url)
 
-            # Also check for any github.com URLs in content
-            github_urls = re.findall(r'https://github\.com/[^\s\)]+', content)
+            # Also check for any github.com URLs in description
+            github_urls = re.findall(r'https://github\.com/[^\s\)]+', description)
             for url in github_urls:
                 existing_urls.add(url.strip())
 
