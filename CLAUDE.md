@@ -21,12 +21,21 @@ python3 vibe_gh_sync.py --once
 # Run continuous sync (loops every N seconds)
 python3 vibe_gh_sync.py
 
-# Clear duplicate tasks
+# Clear duplicate tasks (WARNING: Only works in Claude Code with MCP access!)
 python3 vibe_gh_sync.py --clear-tasks
 
 # Show what would be synced without creating tasks
 python3 vibe_gh_sync.py --dry-run
 ```
+
+## Task Deletion Limitation
+
+**IMPORTANT**: The `--clear-tasks` command **only works when run from Claude Code sessions** that have access to the `vibe_kanban` MCP server.
+
+- The Vibe Kanban API does **not support HTTP DELETE** operations
+- Task deletion requires the `mcp-cli` tool and `vibe_kanban/delete_task` MCP tool
+- Running `--clear-tasks` outside of Claude Code will fail with "mcp-cli: command not found"
+- To delete tasks outside Claude Code, use the Vibe Kanban UI manually
 
 ## Prerequisites
 

@@ -598,7 +598,7 @@ def delete_task_via_mcp(task_id):
         else:
             logger.error(f"MCP delete failed for {task_id}: {result.stderr}")
             return False
-    except subprocess.SubprocessError as e:
+    except (subprocess.SubprocessError, FileNotFoundError) as e:
         logger.error(f"Error calling MCP to delete task {task_id}: {e}")
         return False
 
@@ -619,13 +619,23 @@ def delete_task(api_url, task_id):
 
 
 def clear_tasks_interactive(config, task_filter=None, auto_confirm=False):
-    """Clear tasks from Vibe Kanban project."""
+    """Clear tasks from Vibe Kanban project.
+
+    WARNING: Task deletion only works when run from Claude Code sessions with MCP access.
+    The Vibe Kanban API does not support HTTP DELETE - deletions require the vibe_kanban MCP server.
+    Running this command outside of Claude Code will fail to delete tasks.
+    """
     vibe_url = get_vibe_api_url(config)
     projects = config.get("projects", [])
 
     if not projects:
         print("No projects configured. Run 'vibe-sync --setup' first.")
         return 1
+
+    # Warn user about MCP requirement
+    print("\nWARNING: Task deletion requires Claude Code with MCP access.")
+    print("This command will likely fail outside of Claude Code sessions.")
+    print("The Vibe Kanban API does not support HTTP DELETE operations.\n")
 
     # Show projects
     print("\nConfigured projects:")
@@ -757,7 +767,7 @@ Examples:
     parser.add_argument(
         "--clear-tasks",
         action="store_true",
-        help="Clear tasks from Vibe Kanban project",
+        help="Clear tasks from Vibe Kanban project (WARNING: Requires Claude Code with MCP access - will not work standalone)",
     )
     parser.add_argument(
         "--yes",
